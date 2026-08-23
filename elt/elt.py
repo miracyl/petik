@@ -44,6 +44,7 @@ def return_analysis(engine):
 						FROM sales s
 						)
 						SELECT 
+<<<<<<< HEAD
 							m."Country",
 							m."StockCode",
 							m."UnitPrice",
@@ -68,6 +69,26 @@ def return_analysis(engine):
 						FROM modify m
 						GROUP BY m."Country", m."StockCode", m."UnitPrice"
 						ORDER BY m."Country", m."UnitPrice"
+=======
+							s."Country",
+							s."StockCode",
+							ROUND(AVG(s."UnitPrice"),2),
+							SUM(CASE WHEN s."Quantity" > 0 THEN s."Quantity" END) AS total_sold,
+							COALESCE(ABS(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" END)),0) AS total_returns,
+							ABS(
+								ROUND(
+									COALESCE(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" END)::DECIMAL, 0) 
+									/ NULLIF(SUM(CASE WHEN s."Quantity" > 0 THEN s."Quantity" END)::DECIMAL, 0) * 100.0,
+								2)
+							) AS return_rate_percent,
+							ABS(ROUND(
+								COALESCE(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" * s."UnitPrice" END)::DECIMAL,0),
+							2)) AS revenue_lost_from_returns
+						FROM sales s
+						WHERE s."CustomerID" IS NOT NULL
+						GROUP BY s."Country", s."StockCode"
+						ORDER BY return_rate_percent DESC NULL LAST
+>>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
 					"""
 				)
 			)
@@ -90,14 +111,23 @@ def customer_rfm_segments(engine):
 				text(
 					"""
 						CREATE TABLE customer_rfm_segments AS
+<<<<<<< HEAD
+=======
+						WITH modify AS 
+>>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
 						mod AS (
 							SELECT 
 								s."Country",
 								s."CustomerID",
 								ROUND(SUM(s."UnitPrice" * s."Quantity")::DECIMAL,2) AS monetary,
 								COUNT(DISTINCT s."InvoiceNo") AS frequency,
+<<<<<<< HEAD
 								EXTRACT(DAY FROM (SELECT MAX(sales."InvoiceDate") FROM sales) - MAX(s."InvoiceDate"::TIMESTAMP)) AS recency
 							FROM sales s
+=======
+								EXTRACT(DAY FROM NOW() - MAX(s."InvoiceDate"::TIMESTAMP)) AS recency
+							FROM sales s 
+>>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
 							GROUP BY s."CustomerID", s."Country"
 						),
 						modi AS (
@@ -111,12 +141,12 @@ def customer_rfm_segments(engine):
 						SELECT 
 							m.*,
 							CASE
-								WHEN recency_score = 3 AND frequency_score = 3 AND monetary_score = 3 THEN 'VIP'
-								WHEN recency_score = 3 AND frequency_score >= 2 AND monetary_score >= 2 THEN 'Лояльный'
-								WHEN recency_score = 3 AND frequency_score = 1 THEN 'Новый'
-								WHEN recency_score = 2 AND frequency_score >= 2 AND monetary_score >= 2 THEN 'Постоянный'
-								WHEN recency_score = 2 AND frequency_score <= 1 THEN 'Спящий'
-								WHEN recency_score = 1 THEN 'Потерянный'
+								WHEN m."recency_score" = 3 AND m."frequency_score" = 3 AND m."monetary_score" = 3 THEN 'VIP'
+								WHEN m."recency_score" = 3 AND m."frequency_score" >= 2 AND m."monetary_score" >= 2 THEN 'Лояльный'
+								WHEN m."recency_score" = 3 AND m."frequency_score" = 1 THEN 'Новый'
+								WHEN m."recency_score" = 2 AND m."frequency_score" >= 2 AND m."monetary_score" >= 2 THEN 'Постоянный'
+								WHEN m."recency_score" = 2 AND m."frequency_score" <= 1 THEN 'Спящий'
+								WHEN m."recency_score" = 1 THEN 'Потерянный'
 								ELSE 'Другой'
 							END AS segment
 						FROM modi m
@@ -168,7 +198,7 @@ def product_sale_analysis(engine):
 							ROUND((AVG(m."UnitPrice") FILTER(m."Quantity" > 0))::DECIMAL,2) AS avg_price
 						FROM modify m
 						GROUP BY m."Country", m."StockCode"
-						ORDER BY 5 DESC
+						ORDER BY total_revenue DESC
 					"""
 				)
 			)
