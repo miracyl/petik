@@ -44,9 +44,11 @@ def connectToDB():
 	try:
 		rawData.to_sql('sales',engine, index=False, if_exists='replace')
 		print(f"✅ Загружено {len(rawData)} строк в таблицу sales")
-		return len(rawData) 
+		return len(rawData)
 	except Exception as e:
 		return None
+	finally:
+		engine.dispose()
 	
 def main():
 	print(f"Вторая часть запускается")
