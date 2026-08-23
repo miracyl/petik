@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: petproject
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  python_loader:
+    build:
+      context: ./loader
+      dockerfile: Dockerfile
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./loader/data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - app-network
+
+  python_etl:
+    build:
+      context: ./elt
+      dockerfile: Dockerfile
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    depends_on:
+      python_loader:
+        condition: service_completed_successfully
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
+    external: false
+
+volumes:
+  postgres_data:
