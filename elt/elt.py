@@ -44,51 +44,24 @@ def return_analysis(engine):
 						FROM sales s
 						)
 						SELECT 
-<<<<<<< HEAD
-							m."Country",
-							m."StockCode",
-							m."UnitPrice",
-							SUM(m."Quantity") FILTER(WHERE m."Quantity" > 0) AS total_sold,
-							COALESCE(ABS(SUM(m."Quantity") FILTER(m."Quantity" < 0)),0) AS total_returns,
-							CASE 
-								WHEN COALESCE((SUM(s."Quantity") FILTER(s."Quantity" > 0)), 0) = 0 
-								THEN 0
-								ELSE ROUND(
-									ABS(
-										COALESCE((SUM(s."Quantity") FILTER(s."Quantity" < 0)), 0)::DECIMAL 
-										/ (SUM(s."Quantity) FILTER(s."Quantity" > 0))::DECIMAL * 100.0
-									),
-									2
-								)
-							END AS return_rate_percent,
-							ABS(
-								ROUND(
-									COALESCE((SUM(m."Quantity" * m."UnitPrice") FILTER(m."Quantity" < 0))::DECIMAL,0),
-								2)
-							) AS revenue_lost_from_returns
-						FROM modify m
-						GROUP BY m."Country", m."StockCode", m."UnitPrice"
-						ORDER BY m."Country", m."UnitPrice"
-=======
 							s."Country",
 							s."StockCode",
-							ROUND(AVG(s."UnitPrice"),2),
-							SUM(CASE WHEN s."Quantity" > 0 THEN s."Quantity" END) AS total_sold,
-							COALESCE(ABS(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" END)),0) AS total_returns,
+							ROUND(AVG(s."UnitPrice")::DECIMAL,2) AS avg_unit_price,
+							SUM(s."Quantity") FILTER (WHERE s."Quantity" > 0) AS total_sold,
+							ABS(COALESCE(SUM(s."Quantity") FILTER (WHERE s."Quantity" < 0),0)) AS total_returns,
 							ABS(
 								ROUND(
-									COALESCE(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" END)::DECIMAL, 0) 
-									/ NULLIF(SUM(CASE WHEN s."Quantity" > 0 THEN s."Quantity" END)::DECIMAL, 0) * 100.0,
+									COALESCE(SUM(s."Quantity") FILTER (WHERE s."Quantity" < 0)::DECIMAL, 0) 
+									/ NULLIF(SUM(s."Quantity") FILTER (WHERE s."Quantity" > 0)::DECIMAL, 0) * 100.0,
 								2)
 							) AS return_rate_percent,
 							ABS(ROUND(
-								COALESCE(SUM(CASE WHEN s."Quantity" < 0 THEN s."Quantity" * s."UnitPrice" END)::DECIMAL,0),
+								COALESCE(SUM(s."Quantity" * s."UnitPrice") FILTER (WHERE s."Quantity" < 0)::DECIMAL,0),
 							2)) AS revenue_lost_from_returns
 						FROM sales s
 						WHERE s."CustomerID" IS NOT NULL
 						GROUP BY s."Country", s."StockCode"
-						ORDER BY return_rate_percent DESC NULL LAST
->>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
+						ORDER BY return_rate_percent DESC NULLS LAST
 					"""
 				)
 			)
@@ -111,23 +84,14 @@ def customer_rfm_segments(engine):
 				text(
 					"""
 						CREATE TABLE customer_rfm_segments AS
-<<<<<<< HEAD
-=======
-						WITH modify AS 
->>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
-						mod AS (
+						WITH mod AS (
 							SELECT 
 								s."Country",
 								s."CustomerID",
 								ROUND(SUM(s."UnitPrice" * s."Quantity")::DECIMAL,2) AS monetary,
 								COUNT(DISTINCT s."InvoiceNo") AS frequency,
-<<<<<<< HEAD
-								EXTRACT(DAY FROM (SELECT MAX(sales."InvoiceDate") FROM sales) - MAX(s."InvoiceDate"::TIMESTAMP)) AS recency
-							FROM sales s
-=======
 								EXTRACT(DAY FROM NOW() - MAX(s."InvoiceDate"::TIMESTAMP)) AS recency
 							FROM sales s 
->>>>>>> 034348ef72c52557de8945ffd14e048df58bf66a
 							GROUP BY s."CustomerID", s."Country"
 						),
 						modi AS (
@@ -174,31 +138,31 @@ def product_sale_analysis(engine):
 					"""
 						CREATE TABLE product_sale_analysis AS
 						WITH modify AS (						
-							SELECT 
-								s.*,
-								SUM(s."Quantity" * s."UnitPrice") OVER(PARTITION BY s."Country") AS country_revenue
- 							FROM sales s
+								SELECT 
+										s.*,
+										SUM(s."Quantity" * s."UnitPrice") OVER(PARTITION BY s."Country") AS country_revenue
+								FROM sales s
 						)
 						SELECT
-							m."Country",
-							m."StockCode",
-							MAX(m."Description") AS description,
-							COALESCE(SUM(m."Quantity") FILTER(m."Quantity" > 0),0) AS total_quantity_sold,
-							COALESCE(ABS(SUM(m."Quantity") FILTER(m."Quantity" < 0)),0) AS total_quantity_return,
-							ROUND(SUM(m."Quantity" * m."UnitPrice")::DECIMAL,2) AS total_revenue,
-							COUNT(DISTINCT m."CustomerID") AS unique_buyers,
-							GREATEST(
-								0,
-								ROUND(
-											COALESCE(SUM(m."Quantity" * m."UnitPrice"), 0)::DECIMAL
-											/ NULLIF(MAX(m."country_revenue"), 0)::DECIMAL * 100.0,
-											2
-								)
-							) AS revenue_share_in_country,
-							ROUND((AVG(m."UnitPrice") FILTER(m."Quantity" > 0))::DECIMAL,2) AS avg_price
+								m."Country",
+								m."StockCode",
+								MAX(m."Description") AS description,
+								COALESCE(SUM(m."Quantity") FILTER (WHERE m."Quantity" > 0), 0) AS total_quantity_sold,
+								COALESCE(SUM(m."Quantity") FILTER (WHERE m."Quantity" < 0), 0) AS total_quantity_return,
+								ROUND(SUM(m."Quantity" * m."UnitPrice")::DECIMAL, 2) AS total_revenue,
+								COUNT(DISTINCT m."CustomerID") AS unique_buyers,
+								GREATEST(
+										0,
+										ROUND(
+												COALESCE(SUM(m."Quantity" * m."UnitPrice"), 0)::DECIMAL
+												/ NULLIF(MAX(m."country_revenue"), 0)::DECIMAL * 100.0,
+												2
+										)
+								) AS revenue_share_in_country,
+								ROUND(AVG(m."UnitPrice") FILTER (WHERE m."Quantity" > 0)::DECIMAL, 2) AS avg_price
 						FROM modify m
 						GROUP BY m."Country", m."StockCode"
-						ORDER BY total_revenue DESC
+						ORDER BY total_revenue DESC;
 					"""
 				)
 			)
@@ -224,34 +188,36 @@ def sale_monthly_trend(engine):
 					"""
 						CREATE TABLE sale_monthly_trend AS
 						WITH modify AS (
-							SELECT
-								s.*,
-								MIN(s."InvoiceDate"::DATE) OVER(PARTITION BY s."Country", s."CustomerID") AS first_order_of_client
-							FROM sales s
+								SELECT
+										s.*,
+										MIN(s."InvoiceDate"::DATE) OVER(PARTITION BY s."Country", s."CustomerID") AS first_order_of_client
+								FROM sales s
 						),
-						montly_stats AS (
-							SELECT
-								m."Country" AS country,
-								TO_CHAR(DATE_TRUNC('month', m."InvoiceDate"::DATE), 'YYYY-MM') AS year_month,
-								ROUND(COALESCE(SUM(m."UnitPrice" * m."Quantity"),0)::DECIMAL,2) AS monthly_revenue,
-								COUNT(DISTINCT m."InvoiceNo") AS monthly_orders,
-								ROUND(
-									COUNT(
-										DISTINCT CASE 
-											WHEN DATE_TRUNC('month', m."first_order_of_client"::DATE) = DATE_TRUNC('month', m."InvoiceDate"::DATE) 
-											THEN m."CustomerID" END)
-											/ NULLIF(COUNT(DISTINCT m."CustomerID"),0) * 100,2) AS adoption_of_new_clients
-							FROM modify m
-							GROUP BY m."Country", DATE_TRUNC('month', m."InvoiceDate"::DATE)
+						monthly_stats AS (
+								SELECT
+										m."Country" AS country,
+										TO_CHAR(DATE_TRUNC('month', m."InvoiceDate"::DATE), 'YYYY-MM') AS year_month,
+										ROUND(COALESCE(SUM(m."UnitPrice" * m."Quantity"), 0)::DECIMAL, 2) AS monthly_revenue,
+										COUNT(DISTINCT m."InvoiceNo") AS monthly_orders,
+										ROUND(
+												COUNT(DISTINCT m."CustomerID") FILTER (
+														WHERE DATE_TRUNC('month', m."first_order_of_client"::DATE) = DATE_TRUNC('month', m."InvoiceDate"::DATE)
+												)::DECIMAL
+												/ NULLIF(COUNT(DISTINCT m."CustomerID"), 0) * 100,
+												2
+										) AS adoption_of_new_clients
+								FROM modify m
+								GROUP BY m."Country", DATE_TRUNC('month', m."InvoiceDate"::DATE)
 						)
 						SELECT 
-							*,
-							LAG(monthly_revenue, 1,0) OVER (PARTITION BY country ORDER BY year_month) AS prev_month_revenue,
-    					ROUND(
-							(monthly_revenue - LAG(monthly_revenue, 1,0) OVER (PARTITION BY country ORDER BY year_month))::DECIMAL
-							/ NULLIF(LAG(monthly_revenue, 1,0) OVER (PARTITION BY country ORDER BY year_month), 0)::DECIMAL * 100.0,
-        				2) AS revenue_growth_percent
-						FROM montly_stats ms
+								*,
+								LAG(monthly_revenue, 1, 0) OVER (PARTITION BY country ORDER BY year_month) AS prev_month_revenue,
+								ROUND(
+										(monthly_revenue - LAG(monthly_revenue, 1, 0) OVER (PARTITION BY country ORDER BY year_month))::DECIMAL
+										/ NULLIF(LAG(monthly_revenue, 1, 0) OVER (PARTITION BY country ORDER BY year_month), 0)::DECIMAL * 100.0,
+										2
+								) AS revenue_growth_percent
+						FROM monthly_stats ms;
 					"""
 				)
 			)
@@ -292,39 +258,42 @@ def analysis_of_sells_of_country(engine):
 								ROUND(AVG(m."UnitPrice")::DECIMAL, 2) AS avg_price,
 								COUNT(DISTINCT m."CustomerID") AS unique_clients,
 								COUNT(DISTINCT m."StockCode") AS unique_products,
-								COUNT(CASE WHEN m."Quantity" < 0 THEN 1 END) AS return_orders,
-								ROUND(COUNT(CASE WHEN m."Quantity" < 0 THEN 1 END)::DECIMAL / NULLIF(COUNT(*), 0) * 100, 2) AS return_orders_percent,
-								ROUND((SUM(ABS(m."Quantity") * m."UnitPrice") FILTER(m."Quantity" < 0))::DECIMAL, 2) AS returns_amount,
+								COUNT(*) FILTER (WHERE m."Quantity" < 0) AS return_orders,
+								ROUND(COUNT(*) FILTER (WHERE m."Quantity" < 0)::DECIMAL / NULLIF(COUNT(*), 0) * 100, 2) AS return_orders_percent,
+								ROUND(SUM(ABS(m."Quantity") * m."UnitPrice") FILTER (WHERE m."Quantity" < 0)::DECIMAL, 2) AS returns_amount,
 								ROUND(
-										(SUM(ABS(m."Quantity") * m."UnitPrice") FILTER(m."Quantity" < 0))::DECIMAL 
-										/ NULLIF(SUM(m."Quantity" * m."UnitPrice") FILTER( m."Quantity" > 0), 0)::DECIMAL * 100,
+										SUM(ABS(m."Quantity") * m."UnitPrice") FILTER (WHERE m."Quantity" < 0)::DECIMAL 
+										/ NULLIF(SUM(m."Quantity" * m."UnitPrice") FILTER (WHERE m."Quantity" > 0), 0)::DECIMAL * 100,
 										2
 								) AS returns_percent_of_revenue,
 								ROUND(
-										COALESCE(SUM(CASE WHEN m."Quantity" > 0 THEN m."Quantity" * m."UnitPrice" END)::DECIMAL, 0)
+										COALESCE(SUM(m."Quantity" * m."UnitPrice") FILTER (WHERE m."Quantity" > 0)::DECIMAL, 0)
 										/ NULLIF(COUNT(DISTINCT m."InvoiceNo")::DECIMAL, 0),
 										2
 								) AS avg_order_value,
 								ROUND(
-										COALESCE(SUM(CASE WHEN m."Quantity" > 0 THEN m."Quantity" END)::DECIMAL, 0)
+										COALESCE(SUM(m."Quantity") FILTER (WHERE m."Quantity" > 0)::DECIMAL, 0)
 										/ NULLIF(COUNT(DISTINCT m."InvoiceNo"), 0),
 										2
 								) AS avg_items_per_order,
 								ROUND(
-									SUM(m."Quantity" * m."UnitPrice")::DECIMAL
-									/ NULLIF((SELECT SUM(m."Quantity" * m."UnitPrice") FROM modify m)::DECIMAL,0) * 100.0,
-								2) AS revenue_share_percent,
+										SUM(m."Quantity" * m."UnitPrice")::DECIMAL
+										/ NULLIF((SELECT SUM(m."Quantity" * m."UnitPrice") FROM modify m)::DECIMAL, 0) * 100.0,
+										2
+								) AS revenue_share_percent,
 								TO_CHAR(MIN(m."InvoiceDate"::DATE), 'YYYY-MM-DD') AS first_sale_date,
 								TO_CHAR(MAX(m."InvoiceDate"::DATE), 'YYYY-MM-DD') AS last_sale_date,
 								COUNT(DISTINCT DATE_TRUNC('month', m."InvoiceDate"::DATE)) AS active_months,
 								ROUND(
-									SUM(m."UnitPrice" * m."Quantity")::DECIMAL 
-									/ NULLIF(COUNT(DISTINCT DATE_TRUNC('month', m."InvoiceDate"::DATE)),0),
-								2) AS avg_monthly_revenue,
+										SUM(m."UnitPrice" * m."Quantity")::DECIMAL 
+										/ NULLIF(COUNT(DISTINCT DATE_TRUNC('month', m."InvoiceDate"::DATE)), 0),
+										2
+								) AS avg_monthly_revenue,
 								ROUND(
-									COALESCE(SUM(CASE WHEN m."Quantity" < 0 THEN ABS(m."Quantity" * m."UnitPrice") END),0)::DECIMAL
-									/ NULLIF(COUNT(DISTINCT m."StockCode"),0)::DECIMAL,
-								2) AS avg_return_per_order,
+										COALESCE(SUM(ABS(m."Quantity" * m."UnitPrice")) FILTER (WHERE m."Quantity" < 0), 0)::DECIMAL
+										/ NULLIF(COUNT(DISTINCT m."StockCode"), 0)::DECIMAL,
+										2
+								) AS avg_return_per_order,
 								MAX(m."InvoiceDate"::DATE) - MIN(m."InvoiceDate"::DATE) AS active_days
 						FROM modify m
 						GROUP BY m."Country"
@@ -343,24 +312,21 @@ def analysis_of_sells_of_country(engine):
 def main():
 	print(f"Запуск третьей части!")
 	engine = connect_to_db()
-	try:
-		res = analysis_of_sells_of_country(engine)
-		if res == None :
-			print(f"Problem with function: analysis_of_sells_of_country")
-		res = sale_monthly_trend(engine)
-		if res == None :
-			print(f"Problem with function: sale_monthly_trend")
-		res = product_sale_analysis(engine)
-		if res == None :
-			print(f"Problem with function: product_sale_analysis")
-		res = customer_rfm_segments(engine)
-		if res == None :
-			print(f"Problem with function: customer_rfm_segments")
-		res = return_analysis(engine)
-		if res == None :
-			print(f"Problem with function: return_analysis")
-	finally:
-		engine.dispose()
+	res = analysis_of_sells_of_country(engine)
+	if res == None :
+		print(f"Problem with function: analysis_of_sells_of_country")
+	res = sale_monthly_trend(engine)
+	if res == None :
+		print(f"Problem with function: sale_monthly_trend")
+	res = product_sale_analysis(engine)
+	if res == None :
+		print(f"Problem with function: product_sale_analysis")
+	res = customer_rfm_segments(engine)
+	if res == None :
+		print(f"Problem with function: customer_rfm_segments")
+	res = return_analysis(engine)
+	if res == None :
+		print(f"Problem with function: return_analysis")
 
 if __name__ == "__main__":
 	main()
