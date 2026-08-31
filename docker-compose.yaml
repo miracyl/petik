@@ -41,7 +41,7 @@ services:
 
   python_etl:
     build:
-      context: ./elt
+      context: ./etl
       dockerfile: Dockerfile
     environment:
       PGHOST: ${POSTGRES_HOST}
@@ -54,6 +54,23 @@ services:
         condition: service_completed_successfully
     networks:
       - app-network
+      
+  python_dynamic_report:
+    build: 
+      context: ./dynamic_report
+      dockerfile: Dockerfile
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    depends_on:
+      python_etl:
+        condition: service_completed_succesfully
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge

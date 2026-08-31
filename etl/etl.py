@@ -66,6 +66,7 @@ def return_analysis(engine):
 				)
 			)
 			conn.commit()
+			print("Table return_analysis was created")
 			return True
 	except Exception as e:
 		print(f"Table return_analysis is not executed: {e}")
@@ -119,6 +120,7 @@ def customer_rfm_segments(engine):
 				)
 			)
 			conn.commit()
+			print("Table customer_rfm_segments was created")
 			return True
 	except Exception as e:
 		print(f"Table customer_rfm_segments is not executed: {e}")

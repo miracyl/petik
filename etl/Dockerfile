@@ -2,7 +2,7 @@ FROM python:3.10-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt 
-COPY elt.py /app/scripts/
+COPY etl.py /app/scripts/
 RUN chmod +x /app/scripts/*.py
-CMD [ "python", "/app/scripts/elt.py" ]
+CMD [ "python", "/app/scripts/etl.py" ]
 
