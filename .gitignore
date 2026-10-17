@@ -1,1 +1,33 @@
+# Переменные окружения и секреты
 .env
+
+# Виртуальные окружения Python
+.venv/
+venv/
+env/
+ENV/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Настройки IDE и редакторов
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Системные файлы macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Генерируемые отчёты и временные файлы
+*.xlsx
+dynamic_report/*.xlsx
+report*.xlsx
+loader/data/error_log.csv
